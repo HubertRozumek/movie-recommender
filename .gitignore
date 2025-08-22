@@ -224,7 +224,6 @@ Thumbs.db
 *.pth
 *.h5
 *.onnx
-models/
 
 # Prometheus data
 prometheus_data/
