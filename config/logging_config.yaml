@@ -1,0 +1,363 @@
+# Logging Configuration for MovieLens Recommendation Benchmark
+
+version: 1
+disable_existing_loggers: false
+
+# Formatters define the layout of log messages
+formatters:
+  simple:
+    format: '%(levelname)s - %(name)s - %(message)s'
+    
+  detailed:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+    
+  json:
+    class: pythonjsonlogger.jsonlogger.JsonFormatter
+    format: '%(asctime)s %(name)s %(levelname)s %(funcName)s %(lineno)d %(message)s'
+    
+  colored:
+    class: colorlog.ColoredFormatter
+    format: '%(log_color)s%(levelname)-8s%(reset)s %(blue)s%(name)s%(reset)s - %(message)s'
+    log_colors:
+      DEBUG: cyan
+      INFO: green
+      WARNING: yellow
+      ERROR: red
+      CRITICAL: red,bg_white
+      
+  structured:
+    format: |
+      timestamp: %(asctime)s
+      level: %(levelname)s
+      logger: %(name)s
+      module: %(module)s
+      function: %(funcName)s
+      line: %(lineno)d
+      message: %(message)s
+      
+# Filters for conditional logging
+filters:
+  debug_only:
+    class: logging.Filter
+    name: debug_filter
+    
+  exclude_health_checks:
+    class: utils.logger.HealthCheckFilter
+    
+  rate_limit:
+    class: utils.logger.RateLimitFilter
+    rate: 100  # messages per second
+    per: 1  # time window in seconds
+
+# Handlers define where logs go
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: colored
+    stream: ext://sys.stdout
+    filters: [exclude_health_checks]
+    
+  console_debug:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: detailed
+    stream: ext://sys.stdout
+    
+  file_info:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: detailed
+    filename: logs/info.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 10
+    encoding: utf8
+    
+  file_error:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: detailed
+    filename: logs/error.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 10
+    encoding: utf8
+    
+  file_debug:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: logs/debug.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 5
+    encoding: utf8
+    
+  file_json:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/app.json
+    maxBytes: 10485760  # 10MB
+    backupCount: 10
+    encoding: utf8
+    
+  timed_file:
+    class: logging.handlers.TimedRotatingFileHandler
+    level: INFO
+    formatter: detailed
+    filename: logs/app.log
+    when: midnight
+    interval: 1
+    backupCount: 30
+    encoding: utf8
+    
+  performance:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/performance.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+    encoding: utf8
+    
+  training:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: detailed
+    filename: logs/training.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 3
+    encoding: utf8
+    
+  evaluation:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: detailed
+    filename: logs/evaluation.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+    encoding: utf8
+    
+  mlflow_handler:
+    class: utils.logger.MLflowHandler
+    level: INFO
+    formatter: json
+    
+  slack:
+    class: utils.logger.SlackHandler
+    level: ERROR
+    formatter: simple
+    webhook_url: ${SLACK_WEBHOOK_URL}
+    channel: ${SLACK_CHANNEL:#ml-experiments}
+    
+  email:
+    class: logging.handlers.SMTPHandler
+    level: CRITICAL
+    formatter: detailed
+    mailhost: [${SMTP_HOST:smtp.gmail.com}, ${SMTP_PORT:587}]
+    fromaddr: ${SMTP_USERNAME}
+    toaddrs: [${NOTIFICATION_EMAIL}]
+    subject: 'MovieLens Benchmark - Critical Error'
+    credentials: [${SMTP_USERNAME}, ${SMTP_PASSWORD}]
+    secure: []
+
+# Loggers configuration
+loggers:
+  # Root logger
+  root:
+    level: INFO
+    handlers: [console, file_info, file_error]
+    
+  # Application loggers
+  src:
+    level: DEBUG
+    handlers: [console, file_debug, file_json]
+    propagate: false
+    
+  src.data:
+    level: INFO
+    handlers: [console, file_info]
+    propagate: false
+    
+  src.models:
+    level: INFO
+    handlers: [console, training]
+    propagate: false
+    
+  src.evaluation:
+    level: INFO
+    handlers: [console, evaluation]
+    propagate: false
+    
+  src.training:
+    level: INFO
+    handlers: [console, training, mlflow_handler]
+    propagate: false
+    
+  src.inference:
+    level: INFO
+    handlers: [console, performance]
+    propagate: false
+    
+  app:
+    level: INFO
+    handlers: [console, file_info]
+    propagate: false
+    
+  # Third-party loggers
+  mlflow:
+    level: INFO
+    handlers: [console]
+    propagate: false
+    
+  optuna:
+    level: INFO
+    handlers: [console]
+    propagate: false
+    
+  tensorflow:
+    level: WARNING
+    handlers: [console]
+    propagate: false
+    
+  torch:
+    level: WARNING
+    handlers: [console]
+    propagate: false
+    
+  gradio:
+    level: INFO
+    handlers: [console]
+    propagate: false
+    
+  uvicorn:
+    level: INFO
+    handlers: [console]
+    propagate: false
+    
+  uvicorn.access:
+    level: INFO
+    handlers: [console]
+    propagate: false
+    filters: [exclude_health_checks]
+    
+  # Database loggers
+  sqlalchemy.engine:
+    level: WARNING
+    handlers: [console]
+    propagate: false
+    
+  redis:
+    level: WARNING
+    handlers: [console]
+    propagate: false
+    
+  # Performance logger
+  performance:
+    level: INFO
+    handlers: [performance]
+    propagate: false
+    
+  # Security logger
+  security:
+    level: INFO
+    handlers: [file_info, file_error]
+    propagate: false
+    
+  # Audit logger
+  audit:
+    level: INFO
+    handlers: [file_json]
+    propagate: false
+
+# Logger groups for different environments
+environments:
+  development:
+    root:
+      level: DEBUG
+      handlers: [console_debug, file_debug]
+    disable_existing_loggers: false
+    
+  testing:
+    root:
+      level: INFO
+      handlers: [console]
+    disable_existing_loggers: true
+    
+  staging:
+    root:
+      level: INFO
+      handlers: [console, file_info, file_error, file_json]
+    disable_existing_loggers: false
+    
+  production:
+    root:
+      level: WARNING
+      handlers: [file_info, file_error, file_json, slack, email]
+    disable_existing_loggers: false
+    
+# Log levels configuration
+log_levels:
+  CRITICAL: 50
+  ERROR: 40
+  WARNING: 30
+  INFO: 20
+  DEBUG: 10
+  NOTSET: 0
+  
+# Custom log levels
+custom_levels:
+  TRACE: 5
+  PERFORMANCE: 25
+  AUDIT: 35
+  
+# Metrics logging configuration
+metrics:
+  enabled: true
+  interval: 60  # seconds
+  handlers: [performance]
+  metrics_to_log:
+    - memory_usage
+    - cpu_usage
+    - request_count
+    - error_rate
+    - response_time
+    
+# Structured logging configuration
+structured_logging:
+  enabled: true
+  include_context: true
+  context_fields:
+    - request_id
+    - user_id
+    - session_id
+    - model_name
+    - experiment_id
+    
+# Log aggregation configuration
+aggregation:
+  enabled: false
+  backend: elasticsearch  # elasticsearch, splunk, datadog
+  config:
+    elasticsearch:
+      hosts: [localhost:9200]
+      index: movielens-logs
+      
+# Profiling configuration
+profiling:
+  enabled: false
+  handlers: [performance]
+  profile_functions:
+    - src.models.*
+    - src.training.*
+    - src.inference.*
+    
+# Distributed tracing
+tracing:
+  enabled: false
+  backend: jaeger  # jaeger, zipkin
+  config:
+    jaeger:
+      agent_host: localhost
+      agent_port: 6831
+      service_name: movielens-benchmark

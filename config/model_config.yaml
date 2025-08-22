@@ -1,0 +1,437 @@
+# Model-specific configurations for MovieLens Recommendation Benchmark
+
+# Collaborative Filtering Models
+collaborative_filtering:
+  user_based:
+    name: "User-Based Collaborative Filtering"
+    enabled: true
+    parameters:
+      # Similarity computation
+      similarity:
+        metric: cosine  # cosine, pearson, jaccard, euclidean
+        min_support: 5  # Minimum number of common items
+        shrinkage: 100  # Shrinkage parameter for similarity
+        
+      # Neighborhood
+      neighborhood:
+        k: 50  # Number of neighbors
+        min_k: 5  # Minimum neighbors required
+        weighted: true  # Use weighted average
+        
+      # Prediction
+      prediction:
+        default_rating: 3.5
+        clip_predictions: true
+        min_rating: 0.5
+        max_rating: 5.0
+        
+      # Performance
+      cache:
+        enabled: true
+        max_size: 10000
+        
+    hyperparameter_search:
+      k: [20, 30, 40, 50, 60, 80, 100]
+      similarity_metric: [cosine, pearson, jaccard]
+      shrinkage: [50, 100, 150, 200]
+      
+  item_based:
+    name: "Item-Based Collaborative Filtering"
+    enabled: true
+    parameters:
+      # Similarity computation
+      similarity:
+        metric: pearson  # cosine, pearson, jaccard, euclidean
+        min_support: 5
+        alpha: 0.5  # Significance weighting
+        
+      # Neighborhood
+      neighborhood:
+        k: 50
+        min_k: 5
+        weighted: true
+        
+      # Baseline estimates
+      baseline:
+        method: als  # als, sgd
+        n_epochs: 10
+        reg: 0.02
+        learning_rate: 0.005
+        
+    hyperparameter_search:
+      k: [20, 30, 40, 50, 60, 80, 100]
+      similarity_metric: [cosine, pearson, adjusted_cosine]
+      alpha: [0.0, 0.25, 0.5, 0.75, 1.0]
+
+# Matrix Factorization Models
+matrix_factorization:
+  svd:
+    name: "Singular Value Decomposition"
+    enabled: true
+    parameters:
+      n_factors: 100  # Number of latent factors
+      n_epochs: 30
+      biased: true  # Use baselines
+      init_mean: 0
+      init_std_dev: 0.1
+      
+      # Learning rates
+      lr_all: 0.005  # Learning rate for all parameters
+      lr_bu: null  # Learning rate for user biases
+      lr_bi: null  # Learning rate for item biases
+      lr_pu: null  # Learning rate for user factors
+      lr_qi: null  # Learning rate for item factors
+      
+      # Regularization
+      reg_all: 0.02  # Regularization for all parameters
+      reg_bu: null
+      reg_bi: null
+      reg_pu: null
+      reg_qi: null
+      
+      # Optimization
+      verbose: true
+      random_state: 42
+      
+    hyperparameter_search:
+      n_factors: [50, 100, 150, 200]
+      n_epochs: [20, 30, 40, 50]
+      lr_all: [0.001, 0.003, 0.005, 0.007, 0.01]
+      reg_all: [0.01, 0.02, 0.04, 0.06]
+      
+  nmf:
+    name: "Non-negative Matrix Factorization"
+    enabled: true
+    parameters:
+      n_factors: 50
+      n_epochs: 50
+      biased: true
+      
+      # Regularization (user)
+      reg_pu: 0.06
+      reg_bu: 0.02
+      
+      # Regularization (item)
+      reg_qi: 0.06
+      reg_bi: 0.02
+      
+      # Learning rates
+      lr_bu: 0.005
+      lr_bi: 0.005
+      
+      # Initialization
+      init_low: 0
+      init_high: 1
+      
+    hyperparameter_search:
+      n_factors: [30, 50, 70, 100]
+      reg_pu: [0.04, 0.06, 0.08, 0.1]
+      reg_qi: [0.04, 0.06, 0.08, 0.1]
+      
+  als:
+    name: "Alternating Least Squares"
+    enabled: true
+    parameters:
+      factors: 100  # Number of latent factors
+      regularization: 0.01
+      iterations: 20
+      alpha: 40  # Confidence weight
+      
+      # Implicit feedback settings
+      implicit: false
+      use_native: true
+      use_cg: true
+      use_gpu: false
+      
+      # Performance
+      calculate_training_loss: false
+      num_threads: 0  # 0 = use all available
+      
+    hyperparameter_search:
+      factors: [50, 100, 150, 200]
+      regularization: [0.001, 0.01, 0.1]
+      iterations: [10, 15, 20, 30]
+      alpha: [1, 10, 40, 100]
+
+# Deep Learning Models
+deep_learning:
+  ncf:
+    name: "Neural Collaborative Filtering"
+    enabled: true
+    architecture:
+      # Embedding layers
+      embedding:
+        user_embedding_size: 64
+        item_embedding_size: 64
+        embedding_initializer: he_normal
+        embedding_regularizer: 0.0
+        
+      # GMF path
+      gmf:
+        enabled: true
+        output_dim: 64
+        activation: linear
+        
+      # MLP path
+      mlp:
+        enabled: true
+        layers: [128, 64, 32]
+        activation: relu
+        dropout_rate: 0.2
+        batch_norm: true
+        
+      # NeuMF combination
+      neumf:
+        alpha: 0.5  # Weight for GMF vs MLP
+        output_activation: sigmoid
+        
+    training:
+      batch_size: 256
+      epochs: 50
+      learning_rate: 0.001
+      optimizer: adam
+      loss: binary_crossentropy
+      metrics: [auc, accuracy]
+      
+      # Negative sampling
+      negative_sampling:
+        enabled: true
+        num_negatives: 4
+        strategy: uniform  # uniform, popular, hard
+        
+      # Callbacks
+      early_stopping:
+        patience: 5
+        monitor: val_loss
+        restore_best: true
+        
+    hyperparameter_search:
+      embedding_size: [32, 64, 128]
+      mlp_layers: [[256, 128, 64], [128, 64, 32], [512, 256, 128]]
+      dropout_rate: [0.1, 0.2, 0.3, 0.5]
+      learning_rate: [0.0001, 0.0005, 0.001, 0.005]
+      
+  autoencoder:
+    name: "AutoEncoder-based Collaborative Filtering"
+    enabled: false
+    architecture:
+      # Encoder
+      encoder:
+        layers: [512, 256, 128]
+        activation: selu
+        dropout_rate: 0.5
+        noise: 0.1  # Denoising autoencoder
+        
+      # Bottleneck
+      bottleneck:
+        size: 64
+        activation: linear
+        
+      # Decoder
+      decoder:
+        layers: [128, 256, 512]
+        activation: selu
+        dropout_rate: 0.5
+        
+      # Output
+      output:
+        activation: sigmoid
+        
+    training:
+      batch_size: 128
+      epochs: 100
+      learning_rate: 0.001
+      optimizer: adam
+      loss: mse
+      
+  wide_deep:
+    name: "Wide & Deep Learning"
+    enabled: false
+    architecture:
+      # Wide component
+      wide:
+        features: [user_id, item_id, user_gender, item_genre]
+        crossed_features: [[user_id, item_id]]
+        
+      # Deep component
+      deep:
+        embedding_size: 32
+        hidden_units: [256, 128, 64]
+        activation: relu
+        dropout_rate: 0.5
+        batch_norm: true
+        
+      # Combination
+      output:
+        activation: sigmoid
+        
+    training:
+      batch_size: 512
+      epochs: 30
+      wide_lr: 0.05
+      deep_lr: 0.001
+      optimizer:
+        wide: ftrl
+        deep: adam
+
+# Hybrid Models
+hybrid:
+  lightfm:
+    name: "LightFM Hybrid Factorization"
+    enabled: true
+    parameters:
+      # Model architecture
+      no_components: 100  # Number of latent components
+      k: 5  # For k-OS training
+      n: 10  # For adaptive k-OS training
+      
+      # Learning
+      learning_schedule: adagrad  # adagrad, adadelta
+      loss: warp  # warp, bpr, warp-kos, logistic
+      learning_rate: 0.05
+      rho: 0.95  # For adadelta
+      epsilon: 1e-06
+      
+      # Regularization
+      item_alpha: 0.0  # L2 penalty on item features
+      user_alpha: 0.0  # L2 penalty on user features
+      
+      # Sampling
+      max_sampled: 10  # For WARP losses
+      
+      # Features
+      use_user_features: true
+      use_item_features: true
+      
+      # Performance
+      num_threads: 0  # 0 = use all available
+      
+    training:
+      epochs: 30
+      verbose: true
+      
+    hyperparameter_search:
+      no_components: [50, 100, 150, 200]
+      loss: [warp, bpr, warp-kos]
+      learning_rate: [0.01, 0.05, 0.1]
+      user_alpha: [0.0, 0.0001, 0.001]
+      item_alpha: [0.0, 0.0001, 0.001]
+      
+  hybrid_deep:
+    name: "Deep Hybrid Model"
+    enabled: false
+    components:
+      # Content-based component
+      content:
+        enabled: true
+        weight: 0.3
+        features: [genres, tags, year, director, actors]
+        
+      # Collaborative component
+      collaborative:
+        enabled: true
+        weight: 0.5
+        method: ncf
+        
+      # Knowledge-based component
+      knowledge:
+        enabled: false
+        weight: 0.2
+        rules: []
+
+# Baseline Models
+baseline:
+  random:
+    name: "Random Recommendations"
+    enabled: true
+    parameters:
+      strategy: uniform  # uniform, weighted
+      seed: 42
+      
+  popular:
+    name: "Popularity-based"
+    enabled: true
+    parameters:
+      time_decay: false
+      decay_rate: 0.95
+      min_ratings: 10
+      
+  constant:
+    name: "Constant Prediction"
+    enabled: true
+    parameters:
+      value: 3.5  # or mean, median
+      
+  user_mean:
+    name: "User Mean Rating"
+    enabled: true
+    parameters:
+      damping: 5  # Shrinkage parameter
+      
+  item_mean:
+    name: "Item Mean Rating"
+    enabled: true
+    parameters:
+      damping: 5
+
+# Ensemble Methods
+ensemble:
+  enabled: false
+  methods:
+    voting:
+      models: [svd, nmf, lightfm]
+      weights: [0.4, 0.3, 0.3]
+      voting: soft  # hard, soft
+      
+    stacking:
+      base_models: [svd, nmf, als, lightfm]
+      meta_model: linear_regression
+      cv_folds: 5
+      
+    blending:
+      models: [svd, lightfm, ncf]
+      blend_weights: [0.35, 0.35, 0.3]
+      optimization_metric: rmse
+
+# Model Selection Criteria
+model_selection:
+  primary_metric: rmse
+  secondary_metrics: [mae, precision_at_10, recall_at_10]
+  
+  # Thresholds for model acceptance
+  thresholds:
+    rmse: 1.0
+    mae: 0.8
+    precision_at_10: 0.1
+    recall_at_10: 0.1
+    
+  # Multi-objective optimization
+  multi_objective:
+    enabled: false
+    objectives: [rmse, inference_time, model_size]
+    weights: [0.5, 0.3, 0.2]
+
+# Production Settings
+production:
+  # Model serving
+  serving:
+    batch_inference: true
+    max_batch_size: 1000
+    timeout_ms: 100
+    cache_predictions: true
+    
+  # Model versioning
+  versioning:
+    strategy: timestamp  # timestamp, semantic, hash
+    keep_n_versions: 5
+    
+  # A/B testing defaults
+  ab_testing:
+    default_model: svd
+    fallback_model: popular
+    
+  # Model update
+  update:
+    frequency: weekly  # daily, weekly, monthly
+    incremental: false
+    retrain_threshold: 0.05  # Performance degradation threshold

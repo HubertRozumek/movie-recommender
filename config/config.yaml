@@ -1,0 +1,446 @@
+# Main Configuration File for MovieLens Recommendation Benchmark
+
+# Project metadata
+project:
+  name: movielens-recommendation-benchmark
+  version: 1.0.0
+  description: Comprehensive benchmark of recommendation systems
+  author: Your Name
+  email: your.email@example.com
+
+# Environment settings
+environment:
+  name: ${APP_ENV:development}
+  debug: ${APP_DEBUG:true}
+  random_seed: ${RANDOM_STATE:42}
+  deterministic: true
+  num_workers: ${MAX_WORKERS:4}
+  device: auto  # auto, cpu, cuda, mps
+
+# Data configuration
+data:
+  dataset: ${MOVIELENS_VERSION:ml-latest-small}
+  base_dir: ${DATA_DIR:data}
+  raw_dir: ${RAW_DATA_DIR:data/raw}
+  processed_dir: ${PROCESSED_DATA_DIR:data/processed}
+  interim_dir: ${INTERIM_DATA_DIR:data/interim}
+  
+  # Data splits
+  splits:
+    train: 0.7
+    validation: 0.15
+    test: 0.15
+    
+  # Stratification
+  stratify: true
+  stratify_by: user_id
+  
+  # Preprocessing
+  preprocessing:
+    min_user_ratings: 20
+    min_item_ratings: 5
+    normalize_ratings: true
+    remove_outliers: true
+    outlier_threshold: 3.5
+    
+  # Feature engineering
+  features:
+    use_timestamp: true
+    use_genres: true
+    use_tags: false
+    create_user_features: true
+    create_item_features: true
+    
+  # Data augmentation
+  augmentation:
+    enabled: false
+    noise_level: 0.1
+    synthetic_samples: 1000
+
+# Model configuration
+models:
+  # Model registry
+  registry_path: ${MODEL_DIR:results/models}
+  
+  # Default hyperparameters for all models
+  defaults:
+    batch_size: ${TRAIN_BATCH_SIZE:256}
+    learning_rate: ${LEARNING_RATE:0.001}
+    epochs: ${NUM_EPOCHS:50}
+    early_stopping: true
+    patience: ${EARLY_STOPPING_PATIENCE:5}
+    optimizer: adam
+    loss_function: mse
+    
+  # Specific model configurations (override defaults)
+  user_based_cf:
+    enabled: true
+    k_neighbors: 50
+    similarity_metric: cosine
+    min_k: 5
+    shrinkage: 100
+    normalize: true
+    
+  item_based_cf:
+    enabled: true
+    k_neighbors: 50
+    similarity_metric: pearson
+    min_k: 5
+    alpha: 0.5
+    
+  svd:
+    enabled: true
+    n_factors: 100
+    n_epochs: 30
+    lr_all: 0.005
+    reg_all: 0.02
+    biased: true
+    
+  nmf:
+    enabled: true
+    n_factors: 50
+    n_epochs: 50
+    biased: true
+    reg_pu: 0.06
+    reg_qi: 0.06
+    reg_bu: 0.02
+    reg_bi: 0.02
+    lr_bu: 0.005
+    lr_bi: 0.005
+    
+  als:
+    enabled: true
+    factors: 100
+    regularization: 0.01
+    iterations: 20
+    alpha: 40
+    
+  ncf:
+    enabled: true
+    embedding_size: 64
+    hidden_layers: [128, 64, 32]
+    dropout_rate: 0.2
+    activation: relu
+    use_bias: true
+    batch_norm: true
+    
+  lightfm:
+    enabled: true
+    no_components: 100
+    loss: warp  # warp, bpr, warp-kos
+    learning_schedule: adagrad
+    max_sampled: 10
+    user_alpha: 0.0
+    item_alpha: 0.0
+    
+  wide_deep:
+    enabled: false
+    wide_features: [user_id, item_id]
+    deep_features: [user_embedding, item_embedding]
+    dnn_hidden_units: [256, 128, 64]
+    dnn_dropout: 0.5
+    l2_reg: 0.001
+
+# Training configuration
+training:
+  # General settings
+  batch_size: ${TRAIN_BATCH_SIZE:256}
+  validation_batch_size: ${EVAL_BATCH_SIZE:512}
+  num_epochs: ${NUM_EPOCHS:50}
+  learning_rate: ${LEARNING_RATE:0.001}
+  
+  # Optimization
+  optimizer:
+    type: adam  # adam, sgd, rmsprop, adagrad
+    params:
+      betas: [0.9, 0.999]
+      eps: 1.0e-8
+      weight_decay: 0.0
+      
+  # Learning rate scheduling
+  scheduler:
+    enabled: true
+    type: reduce_on_plateau  # reduce_on_plateau, cosine, step
+    params:
+      mode: min
+      factor: 0.5
+      patience: 3
+      min_lr: 1.0e-6
+      
+  # Early stopping
+  early_stopping:
+    enabled: true
+    monitor: val_loss
+    patience: ${EARLY_STOPPING_PATIENCE:5}
+    mode: min
+    restore_best_weights: true
+    
+  # Checkpointing
+  checkpoint:
+    enabled: true
+    save_best_only: true
+    save_freq: epoch
+    monitor: val_rmse
+    mode: min
+    
+  # Mixed precision training
+  mixed_precision:
+    enabled: false
+    opt_level: O1  # O0, O1, O2, O3
+    
+  # Distributed training
+  distributed:
+    enabled: ${ENABLE_DISTRIBUTED_TRAINING:false}
+    backend: nccl  # nccl, gloo, mpi
+    world_size: 1
+    rank: 0
+
+# Evaluation configuration
+evaluation:
+  # Metrics to compute
+  metrics:
+    - rmse
+    - mae
+    - precision_at_k
+    - recall_at_k
+    - f1_at_k
+    - ndcg_at_k
+    - map_at_k
+    - hit_rate_at_k
+    - coverage
+    - diversity
+    - novelty
+    
+  # K values for ranking metrics
+  k_values: [5, 10, 20, 50]
+  
+  # Evaluation settings
+  batch_size: ${EVAL_BATCH_SIZE:512}
+  num_recommendations: 100
+  filter_seen: true
+  
+  # Cross-validation
+  cross_validation:
+    enabled: true
+    n_splits: 5
+    shuffle: true
+
+# Hyperparameter optimization
+optimization:
+  # Optuna settings
+  enabled: true
+  framework: optuna  # optuna, hyperopt, ray_tune
+  
+  study:
+    study_name: ${OPTUNA_STUDY_NAME:movielens-optimization}
+    direction: minimize  # minimize, maximize
+    n_trials: ${OPTUNA_N_TRIALS:100}
+    timeout: ${OPTUNA_TIMEOUT:3600}
+    n_jobs: ${OPTUNA_N_JOBS:4}
+    
+  sampler:
+    type: TPESampler  # TPESampler, RandomSampler, GridSampler
+    params:
+      n_startup_trials: 10
+      n_ei_candidates: 24
+      
+  pruner:
+    type: MedianPruner  # MedianPruner, PercentilePruner, HyperbandPruner
+    params:
+      n_startup_trials: 5
+      n_warmup_steps: 5
+      interval_steps: 1
+
+# MLflow configuration
+mlflow:
+  tracking_uri: ${MLFLOW_TRACKING_URI:http://localhost:5000}
+  backend_store_uri: ${MLFLOW_BACKEND_STORE_URI:sqlite:///experiments/mlruns/mlflow.db}
+  artifact_root: ${MLFLOW_ARTIFACT_ROOT:experiments/mlruns/artifacts}
+  experiment_name: ${MLFLOW_EXPERIMENT_NAME:movielens-benchmark}
+  
+  # Run configuration
+  run:
+    name: ${MLFLOW_RUN_NAME:}
+    tags:
+      environment: ${APP_ENV:development}
+      version: ${APP_VERSION:1.0.0}
+    
+  # Autologging
+  autolog:
+    enabled: true
+    log_models: true
+    log_metrics: true
+    log_params: true
+    log_artifacts: true
+    disable_for_unsupported_versions: false
+
+# A/B Testing configuration
+ab_testing:
+  enabled: ${ENABLE_A_B_TESTING:true}
+  
+  # Test configuration
+  test:
+    name: model_comparison
+    variants:
+      - name: control
+        model: svd
+        traffic_allocation: 0.5
+      - name: treatment
+        model: lightfm
+        traffic_allocation: 0.5
+        
+  # Metrics to track
+  metrics:
+    - click_through_rate
+    - conversion_rate
+    - average_rating
+    - user_engagement
+    
+  # Statistical settings
+  statistics:
+    confidence_level: 0.95
+    power: 0.8
+    minimum_detectable_effect: 0.02
+    
+  # Duration
+  duration:
+    min_users: 1000
+    min_days: 7
+    max_days: 30
+
+# Application configuration
+app:
+  # Gradio settings
+  gradio:
+    server_name: ${GRADIO_SERVER_NAME:0.0.0.0}
+    server_port: ${GRADIO_SERVER_PORT:7860}
+    share: ${GRADIO_SHARE:false}
+    auth: ${GRADIO_AUTH_USERNAME:}
+    debug: true
+    
+  # API settings
+  api:
+    host: ${API_HOST:0.0.0.0}
+    port: ${API_PORT:8000}
+    workers: ${API_WORKERS:4}
+    reload: true
+    
+  # Caching
+  cache:
+    enabled: ${ENABLE_CACHE:true}
+    backend: redis  # redis, memcached, in-memory
+    ttl: ${CACHE_TTL:3600}
+    max_size: 1000
+    
+  # Security
+  security:
+    cors_origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:7860}
+    allowed_hosts: ${ALLOWED_HOSTS:localhost,127.0.0.1}
+    secret_key: ${SECRET_KEY:your-secret-key-here}
+
+# Logging configuration
+logging:
+  level: ${LOG_LEVEL:INFO}
+  format: ${LOG_FORMAT:json}
+  
+  # File logging
+  file:
+    enabled: true
+    path: ${LOG_FILE:logs/app.log}
+    rotation: ${LOG_ROTATION:1 day}
+    retention: ${LOG_RETENTION:30 days}
+    max_size: 100MB
+    
+  # Console logging
+  console:
+    enabled: true
+    colorize: true
+    
+  # Structured logging
+  structured:
+    enabled: true
+    include_timestamp: true
+    include_level: true
+    include_module: true
+    include_function: true
+
+# Monitoring configuration
+monitoring:
+  enabled: ${ENABLE_METRICS:true}
+  
+  # Prometheus
+  prometheus:
+    enabled: true
+    port: ${METRICS_PORT:9090}
+    path: /metrics
+    
+  # Custom metrics
+  metrics:
+    - name: model_inference_time
+      type: histogram
+      description: Time taken for model inference
+    - name: recommendation_requests
+      type: counter
+      description: Number of recommendation requests
+    - name: active_users
+      type: gauge
+      description: Number of active users
+      
+  # Health checks
+  health_check:
+    enabled: true
+    path: /health
+    checks:
+      - database
+      - redis
+      - model_loading
+
+# Database configuration
+database:
+  # Main database
+  url: ${DATABASE_URL:sqlite:///movielens.db}
+  
+  # Redis
+  redis:
+    url: ${REDIS_URL:redis://localhost:6379/0}
+    max_connections: 50
+    
+  # MongoDB (optional)
+  mongodb:
+    url: ${MONGODB_URL:mongodb://localhost:27017/movielens}
+    database: movielens
+
+# External services
+external_services:
+  # Movie APIs
+  tmdb:
+    api_key: ${TMDB_API_KEY:}
+    base_url: https://api.themoviedb.org/3
+    
+  omdb:
+    api_key: ${OMDB_API_KEY:}
+    base_url: http://www.omdbapi.com
+
+# Notification configuration
+notifications:
+  # Email
+  email:
+    enabled: false
+    smtp_host: ${SMTP_HOST:smtp.gmail.com}
+    smtp_port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    from_address: ${NOTIFICATION_EMAIL:}
+    
+  # Slack
+  slack:
+    enabled: false
+    webhook_url: ${SLACK_WEBHOOK_URL:}
+    channel: ${SLACK_CHANNEL:#ml-experiments}
+    
+  # Events to notify
+  events:
+    - training_complete
+    - evaluation_complete
+    - error_threshold_exceeded
+    - ab_test_complete
